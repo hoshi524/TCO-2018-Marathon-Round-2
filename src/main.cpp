@@ -329,7 +329,6 @@ struct State {
         }
       }
       calcLight();
-      calcScore();
       for (int i = 0; i < H; ++i) {
         for (int j = 0; j < W; ++j) {
           int p = to(i, j);
@@ -358,9 +357,9 @@ struct State {
       }
     }
     while (es > 0) {
+      double _score = -1e10;
+      int p = 0, t = 0, v1 = 0, v2 = 0;
       if ((obstacles < MO || mirrors < MM) && get_random() % 100 == 0) {
-        double _score = 0;
-        int p = 0, t = 0, v1 = 0, v2 = 0;
         for (int i = h1; i <= h2; ++i) {
           for (int j = w1; j <= w2; ++j) {
             int tp = to(i, j);
@@ -382,40 +381,33 @@ struct State {
             }
           }
         }
-        if (t != 0 && _score - score > 0) {
-          score = _score;
-          score1 += v1;
-          score2 += v2;
-          putItem(p, t);
-        }
       } else {
         int i = get_random() % es;
-        int p = edge[i] >> 8;
-        int t = edge[i] & 0xff;
+        p = edge[i] >> 8;
+        t = edge[i] & 0xff;
         edge[i] = edge[--es];
         if (board[p] != 0) continue;
-        int v1, v2;
         tie(v1, v2) = diffScore(p, t);
         if (v1 == MINI) continue;
-        double _score = calcScore(v1, v2);
-        if (_score - score > remain * log(get_random_double())) {
-          score = _score;
-          score1 += v1;
-          score2 += v2;
-          putItem(p, t);
-        }
+        _score = calcScore(v1, v2);
       }
-      if (false) {
-        int p1 = score1;
-        int p2 = score2;
-        static int tmp[M][4];
-        memcpy(tmp, light, sizeof(tmp));
-        calcLight();
-        calcScore();
-        assert(p1 == score1);
-        assert(p2 == score2);
-        for (int i = 0; i < M; ++i)
-          for (int j = 0; j < 4; ++j) assert(tmp[i][j] == light[i][j]);
+      if (_score - score > remain * log(get_random_double())) {
+        score = _score;
+        score1 += v1;
+        score2 += v2;
+        putItem(p, t);
+        if (false) {
+          int p1 = score1;
+          int p2 = score2;
+          static int tmp[M][4];
+          memcpy(tmp, light, sizeof(tmp));
+          calcLight();
+          calcScore();
+          assert(p1 == score1);
+          assert(p2 == score2);
+          for (int i = 0; i < M; ++i)
+            for (int j = 0; j < 4; ++j) assert(tmp[i][j] == light[i][j]);
+        }
       }
     }
   }
@@ -453,11 +445,12 @@ class CrystalLighting {
     }
     State tmp, bst;
     {
+      cur.replace(to(0, 0), to(H, W));
       while (true) {
         remain = 1.0 - timer.getElapsed() / TIME_LIMIT;
         if (remain < 0) break;
         memcpy(&tmp, &cur, sizeof(cur));
-        constexpr int MASK = 5;
+        constexpr int MASK = 6;
         int h = get_random() % (H - MASK);
         int w = get_random() % (W - MASK);
         tmp.replace(to(h, w), to(h + MASK, w + MASK));
