@@ -56,7 +56,7 @@ inline unsigned get_random() {
   static unsigned y = 2463534242;
   return y ^= (y ^= (y ^= y << 13) >> 17) << 5;
 }
-inline double get_random_double() { return get_random() / UINT32_MAX; }
+inline double get_random_double() { return (double)get_random() / UINT32_MAX; }
 
 /*
 0     = none
@@ -66,13 +66,14 @@ inline double get_random_double() { return get_random() / UINT32_MAX; }
 17~18 = mirror
 */
 
-constexpr double TIME_LIMIT = 2.5;
+constexpr double TIME_LIMIT = 2.8;
 constexpr int N = 1 << 7;
 constexpr int M = N * N;
 constexpr int DIR[] = {1, N, -1, -N};
 int H, W;
 int CL, CM, CO, MM, MO;
 int BOARD[M];
+double remain;
 
 inline int to(int x, int y) { return (x << 7) | y; }
 inline void to(int p, int& x, int& y) { x = p >> 7, y = p & (N - 1); }
@@ -359,7 +360,7 @@ struct State {
         edge[i] = edge[--es];
         if (board[p] != 0) continue;
         int v = diffScore(p, t);
-        if (v > -99 && v >= 0) {
+        if (v > -99 && v > 10 * remain * log(get_random_double())) {
           score += v;
           putItem(p, t);
         }
@@ -407,13 +408,15 @@ class CrystalLighting {
     }
     {
       State tmp;
-      while (timer.getElapsed() < TIME_LIMIT) {
+      while (true) {
+        remain = 1.0 - timer.getElapsed() / TIME_LIMIT;
+        if (remain < 0) break;
         memcpy(&tmp, &cur, sizeof(cur));
         constexpr int MASK = 5;
         int h = get_random() % (H - MASK);
         int w = get_random() % (W - MASK);
         tmp.replace(to(h, w), to(h + MASK, w + MASK));
-        if (tmp.score - cur.score >= 0) {
+        if (tmp.score - cur.score > 10 * remain * log(get_random_double())) {
           memcpy(&cur, &tmp, sizeof(tmp));
         }
       }
