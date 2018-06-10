@@ -76,12 +76,12 @@ int BOARD[M];
 
 inline int to(int x, int y) { return (x << 7) | y; }
 inline void to(int p, int& x, int& y) { x = p >> 7, y = p & (N - 1); }
-inline bool in(int p) { return p > -1 && p < N * H and (p & (N - 1)) < W; }
+inline bool in(int p) { return p > -1 && p < N * H && (p & (N - 1)) < W; }
 inline int crystalScore(int c) { return bitset<3>(c).count() == 1 ? 20 : 30; }
-inline bool isC(int t) { return 0 < t and t < 8; }
-inline bool isL(int t) { return 8 < t and t < 16; }
+inline bool isC(int t) { return 0 < t && t < 8; }
+inline bool isL(int t) { return 8 < t && t < 16; }
 inline bool isO(int t) { return t == 16; }
-inline bool isM(int t) { return 16 < t and t < 19; }
+inline bool isM(int t) { return 16 < t && t < 19; }
 int cost(int t) {
   if (t == 0) return 0;
   if (t < 16) return CL;
@@ -129,7 +129,7 @@ struct State {
     for (int i = 0; i < H; ++i) {
       for (int j = 0; j < W; ++j) {
         int p = to(i, j);
-        if (board[p] > 0 and board[p] <= 16) calcLight(p);
+        if (board[p] > 0 && board[p] <= 16) calcLight(p);
       }
     }
   }
@@ -140,7 +140,7 @@ struct State {
       int n = light[p][k];
       if (n == -1) continue;
       int t = board[n];
-      if (t > 8 && t < 16) bit |= t ^ 8;
+      if (isL(t)) bit |= t ^ 8;
     }
     return bit;
   }
@@ -149,7 +149,10 @@ struct State {
     static int tmp[4];
     memcpy(tmp, light[p], sizeof(tmp));
     for (int k = 0; k < 4; ++k) {
-      if (light[p][k] == i) light[p][k] = j;
+      if (light[p][k] == i) {
+        light[p][k] = j;
+        break;
+      }
     }
     int b = lightBit(p);
     memcpy(light[p], tmp, sizeof(tmp));
@@ -165,21 +168,35 @@ struct State {
   void putItem(int p, int t) {
     board[p] = t;
     if (t == 16) obstacles++;
-    if (t > 16) mirrors++;
-    calcLight(p);
+    if (t <= 16) {
+      calcLight(p);
+    } else {
+      mirrors++;
+      for (int i = 0; i < 4; ++i) {
+        int x = light[p][i];
+        if (x != -1) calcLight(x);
+      }
+    }
   }
 
   int diffScore(int p, int t) {
+    if (board[p] != 0) return -99;
     int x = -cost(t);
     bool ok = false;
+    auto uniqueC = [&](int n, int i) {
+      for (int j = 0; j < i; ++j) {
+        if (n == light[p][j]) return false;
+      }
+      return true;
+    };
     if (t < 16) {
       int b = t ^ 8;
       for (int i = 0; i < 4; ++i) {
         int n = light[p][i];
         if (n == -1) continue;
         int u = board[n];
-        if (u > 8 && u < 16) return -99;
-        if (u < 8) {
+        if (isL(u)) return -99;
+        if (isC(u) && uniqueC(n, i)) {
           int bit = lightBit(n);
           if (bit == (bit | b)) continue;
           if (u == (u | b)) ok = true;
@@ -195,12 +212,12 @@ struct State {
         if (p2 == -1) return;
         int t1 = board[p1];
         int t2 = board[p2];
-        if (isC(t1) and isL(t2)) {
+        if (isC(t1) && isL(t2)) {
           if ((t1 & t2) == 0) ok = true;
           x -= calcScore(t1, lightBit(p1));
           x += calcScore(t1, lightBit(p1, p2, -1));
         }
-        if (isC(t2) and isL(t1)) {
+        if (isC(t2) && isL(t1)) {
           if ((t1 & t2) == 0) ok = true;
           x -= calcScore(t2, lightBit(p2));
           x += calcScore(t2, lightBit(p2, p1, -1));
@@ -208,28 +225,39 @@ struct State {
       };
       diff(0, 2), diff(1, 3);
     } else if (t > 16) {
-      auto diff = [&](int d1, int d2) {
+      for (int i = 0; i < 4; i += 2) {
+        int d1, d2;
+        if (t == 17) {
+          d1 = i, d2 = i ^ 1;
+        } else {
+          d1 = i, d2 = 3 - i;
+        }
         int p1 = light[p][d1];
         int p2 = light[p][d2];
-        if (p1 == -1) return;
-        if (p2 == -1) return;
-        int t1 = board[p1];
-        int t2 = board[p2];
-        if (isC(t1) and isL(t2)) {
-          if (t1 & t2) ok = true;
+        if (p1 == -1 && p2 == -1) continue;
+        int t1 = p1 == -1 ? 16 : board[p1];
+        int t2 = p2 == -1 ? 16 : board[p2];
+        if (isL(t1) && isL(t2)) return -99;
+        if (isC(t1)) {
+          if (isL(t2) && (t1 & t2)) ok = true;
           x -= calcScore(t1, lightBit(p1));
           x += calcScore(t1, lightBit(p1, light[p][(d1 + 2) % 4], p2));
         }
-        if (isC(t2) and isL(t1)) {
-          if (t1 & t2) ok = true;
+        if (isC(t2)) {
+          if (isL(t1) && (t1 & t2)) ok = true;
           x -= calcScore(t2, lightBit(p2));
           x += calcScore(t2, lightBit(p2, light[p][(d2 + 2) % 4], p1));
         }
-      };
-      if (t == 17) {
-        diff(0, 3), diff(1, 2);
-      } else {
-        diff(0, 1), diff(2, 3);
+      }
+      if (ok) {
+        for (int i = 0; i < 4; ++i) {
+          int t1 = board[light[p][i]];
+          if (not isC(t1)) continue;
+          for (int j = 0; j < i; ++j) {
+            int t2 = board[light[p][j]];
+            if (t1 == t2) return -99;
+          }
+        }
       }
     }
     return ok ? x : -99;
@@ -240,7 +268,7 @@ struct State {
     for (int i = 0; i < H; ++i) {
       for (int j = 0; j < W; ++j) {
         int p = to(i, j);
-        if (board[p] > 0 and board[p] < 8) {
+        if (isC(board[p])) {
           int bit = lightBit(p);
           if (bit == 0) continue;
           if (bit == board[p]) {
@@ -265,14 +293,31 @@ struct State {
     int h1, w1, h2, w2;
     to(p1, h1, w1);
     to(p2, h2, w2);
-    for (int i = h1; i < h2; ++i) {
-      for (int j = w1; j < w2; ++j) {
-        int p = to(i, j);
-        if (board[p] != BOARD[p]) board[p] = 0;
+    {  // remove
+      for (int i = h1; i < h2; ++i) {
+        for (int j = w1; j < w2; ++j) {
+          int p = to(i, j);
+          int t = board[p];
+          if (t != BOARD[p]) board[p] = 0;
+        }
       }
+      calcLight();
+      calcScore();
+      for (int i = 0; i < H; ++i) {
+        for (int j = 0; j < W; ++j) {
+          int p = to(i, j);
+          int t = board[p];
+          if (isL(t)) {
+            for (int k = 0; k < 4; ++k) {
+              int n = light[p][k];
+              if (n != -1 && isL(board[n])) board[n] = 0;
+            }
+          }
+        }
+      }
+      calcLight();
+      calcScore();
     }
-    calcLight();
-    calcScore();
     static int edge[M * 4];
     int es = 0;
     for (int i = h1; i <= h2; ++i) {
@@ -285,21 +330,27 @@ struct State {
       }
     }
     while (es > 0) {
-      if (obstacles < MO and get_random() % 100 == 0) {
-        int p = -1, v = 0;
+      if ((obstacles < MO || mirrors < MM) && get_random() % 100 == 0) {
+        int v = 0, p = 0, t = 0;
         for (int i = h1; i <= h2; ++i) {
           for (int j = w1; j <= w2; ++j) {
             int tp = to(i, j);
-            int tv = diffScore(tp, 16);
-            if (v < tv) {
-              v = tv;
-              p = tp;
+            if (board[tp] != 0) continue;
+            for (int tt = 16; tt < 19; ++tt) {
+              if (tt == 16 && obstacles == MO) continue;
+              if (tt > 16 && mirrors == MM) continue;
+              int tv = diffScore(tp, tt);
+              if (v < tv) {
+                v = tv;
+                p = tp;
+                t = tt;
+              }
             }
           }
         }
-        if (p != -1) {
+        if (v > 0) {
           score += v;
-          putItem(p, 16);
+          putItem(p, t);
         }
       } else {
         int i = get_random() % es;
@@ -308,17 +359,17 @@ struct State {
         edge[i] = edge[--es];
         if (board[p] != 0) continue;
         int v = diffScore(p, t);
-        if (v > -99 and v > log(get_random_double())) {
+        if (v > -99 && v >= 0) {
           score += v;
           putItem(p, t);
         }
       }
       if (false) {
-        int t = score;
+        int x = score;
         calcLight();
         calcScore();
-        if (t != score) cerr << t << " " << score << endl;
-        assert(t == score);
+        if (x != score) cerr << x << " " << score << endl;
+        assert(x == score);
       }
     }
   }

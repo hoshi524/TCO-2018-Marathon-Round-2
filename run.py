@@ -10,7 +10,7 @@ subprocess.call('g++ --std=c++0x -W -Wall -O2 -s -pipe -mmmx -msse -msse2 -msse3
 subprocess.call('javac -d out src/CrystalLightingVis.java', shell=True)
 
 scorefile = "best-score.json"
-case = 20
+case = 100
 scores = [0]
 
 try:
