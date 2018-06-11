@@ -70,7 +70,7 @@ constexpr double TIME_LIMIT = 2.8;
 constexpr int N = 1 << 7;
 constexpr int M = N * N;
 constexpr int DIR[] = {1, N, -1, -N};
-constexpr int MINI = -0xffff;
+constexpr double invalid = -1e10;
 int H, W;
 int CL, CM, CO, MM, MO;
 int BOARD[M];
@@ -85,16 +85,14 @@ inline bool isL(int t) { return 8 < t && t < 16; }
 inline bool isO(int t) { return t == 16; }
 inline bool isM(int t) { return 16 < t && t < 19; }
 int cost(int t) {
-  if (t == 0) return 0;
-  if (t < 16) return CL;
-  if (t == 16) return CO;
-  if (t > 16) return CM;
-  assert(false);
+  if (isL(t)) return CL;
+  if (isO(t)) return CO;
+  if (isM(t)) return CM;
+  return 0;
 }
 
 struct State {
   int score1 = 0, score2 = 0, mirrors = 0, obstacles = 0;
-  double score = 0;
   int board[M];
   int light[M][4];
 
@@ -176,21 +174,50 @@ struct State {
     return -10;
   }
 
-  double calcScore(int v1, int v2) {
+  double score(int v1 = 0, int v2 = 0) {
     return (score1 + v1) * (1.0 - remain) + (score2 + v2) * remain;
   }
 
   void putItem(int p, int t) {
     assert(board[p] == 0);
     assert(t > 0);
+    static bool ok[4];
+    for (int i = 0; i < 4; ++i) {
+      ok[i] = [&]() {
+        int a = light[p][i];
+        if (a == -1) return false;
+        int t = board[a];
+        if (!isC(t)) return false;
+        for (int j = 0; j < i; ++j)
+          if (light[p][i] == light[p][j]) return false;
+        return true;
+      }();
+    }
+    for (int i = 0; i < 4; ++i) {
+      if (ok[i]) {
+        int a = light[p][i];
+        int b = lightBit(a);
+        score1 -= calcScore1(board[a], b);
+        score2 -= calcScore2(board[a], b);
+      }
+    }
     board[p] = t;
     calcLight(p);
+    int C = cost(t);
+    score1 -= C, score2 -= C;
     if (isO(t)) obstacles++;
     if (isM(t)) mirrors++;
+    for (int i = 0; i < 4; ++i) {
+      if (ok[i]) {
+        int a = light[p][i];
+        int b = lightBit(a);
+        score1 += calcScore1(board[a], b);
+        score2 += calcScore2(board[a], b);
+      }
+    }
   }
 
-  tuple<int, int> diffScore(int p, int t) {
-    tuple<int, int> invalid = forward_as_tuple(MINI, MINI);
+  double diffScore(int p, int t) {
     if (board[p] != 0) return invalid;
     int v1 = -cost(t), v2 = -cost(t);
     auto add = [&](int t, int cur, int nxt) {
@@ -270,7 +297,7 @@ struct State {
         }
       }
     }
-    return ok ? forward_as_tuple(v1, v2) : invalid;
+    return ok ? score(v1, v2) : invalid;
   }
 
   void calcScore() {
@@ -295,7 +322,6 @@ struct State {
           score1 -= CM, score2 -= CM, mirrors++;
       }
     }
-    score = calcScore(0, 0);
   }
 
   void replace(int p1, int p2) {
@@ -339,26 +365,21 @@ struct State {
       }
     }
     while (es > 0) {
-      double _score = -1e10;
-      int p = 0, t = 0, v1 = 0, v2 = 0;
+      double _score = invalid;
+      int p = 0, t = 0;
       if ((obstacles < MO || mirrors < MM) && get_random() % 100 == 0) {
         for (int i = h1; i <= h2; ++i) {
           for (int j = w1; j <= w2; ++j) {
             int tp = to(i, j);
             if (board[tp] != 0) continue;
             for (int tt = 16; tt < 19; ++tt) {
-              if (tt == 16 && obstacles == MO) continue;
-              if (tt > 16 && mirrors == MM) continue;
-              int _v1, _v2;
-              tie(_v1, _v2) = diffScore(tp, tt);
-              if (_v1 == MINI) continue;
-              double x = calcScore(_v1, _v2);
+              if (isO(tt) && obstacles == MO) continue;
+              if (isM(tt) && mirrors == MM) continue;
+              double x = diffScore(tp, tt);
               if (_score < x) {
                 _score = x;
                 p = tp;
                 t = tt;
-                v1 = _v1;
-                v2 = _v2;
               }
             }
           }
@@ -369,14 +390,9 @@ struct State {
         t = edge[i] & 0xff;
         edge[i] = edge[--es];
         if (board[p] != 0) continue;
-        tie(v1, v2) = diffScore(p, t);
-        if (v1 == MINI) continue;
-        _score = calcScore(v1, v2);
+        _score = diffScore(p, t);
       }
-      if (_score - score > remain * log(get_random_double())) {
-        score = _score;
-        score1 += v1;
-        score2 += v2;
+      if (_score - score() > remain * log(get_random_double())) {
         putItem(p, t);
         if (false) {
           int p1 = score1;
@@ -385,6 +401,8 @@ struct State {
           memcpy(tmp, light, sizeof(tmp));
           calcLight();
           calcScore();
+          if (p1 != score1) cerr << p1 << " " << score1 << endl;
+          if (p2 != score2) cerr << p2 << " " << score2 << endl;
           assert(p1 == score1);
           assert(p2 == score2);
           for (int i = 0; i < M; ++i)
@@ -436,8 +454,7 @@ class CrystalLighting {
         int h = get_random() % (H - MASK);
         int w = get_random() % (W - MASK);
         tmp.replace(to(h, w), to(h + MASK, w + MASK));
-        cur.score = cur.calcScore(0, 0);
-        if (tmp.score - cur.score > 5 * remain * log(get_random_double())) {
+        if (tmp.score() - cur.score() > 5 * remain * log(get_random_double())) {
           memcpy(&cur, &tmp, sizeof(tmp));
         }
         if (bst.score1 < tmp.score1) {
