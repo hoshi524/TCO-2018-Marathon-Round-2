@@ -96,12 +96,18 @@ struct State {
   int board[M];
   int light[M][4];
 
+  void init() {
+    calcLight();
+    calcScore();
+    replace(to(0, 0), to(H, W));
+  }
+
   void calcLight(int p) {
     for (int d = 0; d < 4; ++d) {
       int a = p, b = d;
       int l = [&]() {
         if (board[p] == 0) {
-          return light[p][d];
+          return light[p][(d + 2) % 4];
         } else if (board[p] == 17) {
           return light[p][d ^ 1];
         } else if (board[p] == 18) {
@@ -179,8 +185,6 @@ struct State {
   }
 
   void putItem(int p, int t) {
-    assert(board[p] == 0);
-    assert(t > 0);
     static bool ok[4];
     for (int i = 0; i < 4; ++i) {
       ok[i] = [&]() {
@@ -193,28 +197,36 @@ struct State {
         return true;
       }();
     }
-    for (int i = 0; i < 4; ++i) {
-      if (ok[i]) {
-        int a = light[p][i];
-        int b = lightBit(a);
-        score1 -= calcScore1(board[a], b);
-        score2 -= calcScore2(board[a], b);
+    auto calc = [&](bool add) {
+      for (int i = 0; i < 4; ++i) {
+        if (ok[i]) {
+          int a = light[p][i];
+          int b = lightBit(a);
+          if (add) {
+            score1 += calcScore1(board[a], b);
+            score2 += calcScore2(board[a], b);
+          } else {
+            score1 -= calcScore1(board[a], b);
+            score2 -= calcScore2(board[a], b);
+          }
+        }
       }
-    }
+      int t = board[p];
+      int c = cost(t);
+      if (add) {
+        score1 -= c, score2 -= c;
+        if (isO(t)) obstacles++;
+        if (isM(t)) mirrors++;
+      } else {
+        score1 += c, score2 += c;
+        if (isO(t)) obstacles--;
+        if (isM(t)) mirrors--;
+      }
+    };
+    calc(false);
     board[p] = t;
     calcLight(p);
-    int C = cost(t);
-    score1 -= C, score2 -= C;
-    if (isO(t)) obstacles++;
-    if (isM(t)) mirrors++;
-    for (int i = 0; i < 4; ++i) {
-      if (ok[i]) {
-        int a = light[p][i];
-        int b = lightBit(a);
-        score1 += calcScore1(board[a], b);
-        score2 += calcScore2(board[a], b);
-      }
-    }
+    calc(true);
   }
 
   double diffScore(int p, int t) {
@@ -333,10 +345,9 @@ struct State {
         for (int j = w1; j < w2; ++j) {
           int p = to(i, j);
           int t = board[p];
-          if (t != BOARD[p]) board[p] = 0;
+          if (t != BOARD[p]) putItem(p, 0);
         }
       }
-      calcLight();
       for (int i = 0; i < H; ++i) {
         for (int j = 0; j < W; ++j) {
           int p = to(i, j);
@@ -344,13 +355,11 @@ struct State {
           if (isL(t)) {
             for (int k = 0; k < 4; ++k) {
               int n = light[p][k];
-              if (n != -1 && isL(board[n])) board[n] = 0;
+              if (n != -1 && isL(board[n])) putItem(n, 0);
             }
           }
         }
       }
-      calcLight();
-      calcScore();
     }
     static int edge[M * 4];
     int es = 0;
@@ -394,21 +403,19 @@ struct State {
       }
       if (_score - score() > remain * log(get_random_double())) {
         putItem(p, t);
-        if (false) {
-          int p1 = score1;
-          int p2 = score2;
-          static int tmp[M][4];
-          memcpy(tmp, light, sizeof(tmp));
-          calcLight();
-          calcScore();
-          if (p1 != score1) cerr << p1 << " " << score1 << endl;
-          if (p2 != score2) cerr << p2 << " " << score2 << endl;
-          assert(p1 == score1);
-          assert(p2 == score2);
-          for (int i = 0; i < M; ++i)
-            for (int j = 0; j < 4; ++j) assert(tmp[i][j] == light[i][j]);
-        }
       }
+    }
+    if (false) {
+      int p1 = score1;
+      int p2 = score2;
+      static int tmp[M][4];
+      memcpy(tmp, light, sizeof(tmp));
+      calcLight();
+      calcScore();
+      assert(p1 == score1);
+      assert(p2 == score2);
+      for (int i = 0; i < M; ++i)
+        for (int j = 0; j < 4; ++j) assert(tmp[i][j] == light[i][j]);
     }
   }
 };
@@ -445,7 +452,7 @@ class CrystalLighting {
     }
     State tmp, bst;
     {
-      cur.replace(to(0, 0), to(H, W));
+      cur.init();
       while (true) {
         remain = 1.0 - timer.getElapsed() / TIME_LIMIT;
         if (remain < 0) break;
