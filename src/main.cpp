@@ -98,17 +98,16 @@ struct State {
   int board[M];
   int light[M][4];
 
-  void calcLight(int p, bool on = true) {
+  void calcLight(int p) {
     for (int d = 0; d < 4; ++d) {
       int a = p, b = d;
       int l = [&]() {
-        if (not on) return -1;
         if (board[p] == 0) {
           return light[p][d];
         } else if (board[p] == 17) {
-          return light[p][3 - d];
-        } else if (board[p] == 18) {
           return light[p][d ^ 1];
+        } else if (board[p] == 18) {
+          return light[p][3 - d];
         } else {
           return p;
         }
@@ -184,27 +183,10 @@ struct State {
   void putItem(int p, int t) {
     assert(board[p] == 0);
     assert(t > 0);
-    static int _light[4];
-    if (isM(t)) {
-      mirrors++;
-      memcpy(_light, light[p], sizeof(_light));
-      for (int i = 0; i < 4; ++i) {
-        int x = _light[i];
-        if (x != -1) {
-          calcLight(x, false);
-        }
-      }
-    }
     board[p] = t;
-    if (t == 16) obstacles++;
-    if (t <= 16) {
-      calcLight(p);
-    } else {
-      for (int i = 0; i < 4; ++i) {
-        int x = _light[i];
-        if (x != -1) calcLight(x);
-      }
-    }
+    calcLight(p);
+    if (isO(t)) obstacles++;
+    if (isM(t)) mirrors++;
   }
 
   tuple<int, int> diffScore(int p, int t) {
