@@ -120,6 +120,7 @@ struct State {
         a += DIR[b];
         if (not in(a)) break;
         light[a][(b + 2) % 4] = l;
+        if (p == a) break;
         if (board[a] == 0) continue;
         if (board[a] == 17) {
           b = 3 - b;
@@ -252,7 +253,6 @@ struct State {
         if (isL(u)) return invalid;
         if (isC(u) && uniqueC(n, i)) {
           int bit = lightBit(n);
-          if (bit == (bit | b)) continue;
           if (u == (u | b)) ok = true;
           add(u, bit, bit | b);
         }
@@ -341,11 +341,12 @@ struct State {
     to(p1, h1, w1);
     to(p2, h2, w2);
     {  // remove
+      double rexp = 0.5 + remain * 0.5;
       for (int i = h1; i < h2; ++i) {
         for (int j = w1; j < w2; ++j) {
           int p = to(i, j);
           int t = board[p];
-          if (t != BOARD[p]) putItem(p, 0);
+          if (t != BOARD[p] && get_random_double() < rexp) putItem(p, 0);
         }
       }
       for (int i = 0; i < H; ++i) {
@@ -366,7 +367,8 @@ struct State {
     for (int i = h1; i <= h2; ++i) {
       for (int j = w1; j <= w2; ++j) {
         int p = to(i, j);
-        if (board[p] != 0) continue;
+        if (BOARD[p] != 0) continue;
+        edge[es++] = (p << 8);
         for (int k = 1; k < 8; k <<= 1) {
           int t = 8 | k;
           edge[es++] = (p << 8) | t;
@@ -376,14 +378,12 @@ struct State {
     while (es > 0) {
       double _score = invalid;
       int p = 0, t = 0;
-      if ((obstacles < MO || mirrors < MM) && get_random() % 100 == 0) {
+      if ((obstacles < MO || mirrors < MM) && get_random() % 200 == 0) {
         for (int i = h1; i <= h2; ++i) {
           for (int j = w1; j <= w2; ++j) {
             int tp = to(i, j);
-            if (board[tp] != 0) continue;
             for (int tt = 16; tt < 19; ++tt) {
-              if (isO(tt) && obstacles == MO) continue;
-              if (isM(tt) && mirrors == MM) continue;
+              if (!isValid(tp, tt)) continue;
               double x = diffScore(tp, tt);
               if (_score < x) {
                 _score = x;
@@ -398,7 +398,6 @@ struct State {
         p = edge[i] >> 8;
         t = edge[i] & 0xff;
         edge[i] = edge[--es];
-        if (board[p] != 0) continue;
         _score = diffScore(p, t);
       }
       if (_score - score() > remain * log(get_random_double())) {
@@ -417,6 +416,31 @@ struct State {
       for (int i = 0; i < M; ++i)
         for (int j = 0; j < 4; ++j) assert(tmp[i][j] == light[i][j]);
     }
+  }
+
+  bool isValid(int p, int t) {
+    int* l = light[p];
+    if (t == 0) {
+      for (int i = 0; i < 2; ++i) {
+        if (isL(board[l[i]]) && isL(board[l[i + 2]])) return false;
+      }
+    } else if (isL(t)) {
+      for (int i = 0; i < 4; ++i) {
+        if (isL(board[l[i]])) return false;
+      }
+    } else if (isO(t)) {
+      if (obstacles == MO) return false;
+    } else if (isM(t)) {
+      if (mirrors == MM) return false;
+      for (int i = 0; i < 4; i += 2) {
+        if (t == 17) {
+          if (isL(board[l[i]]) && isL(board[l[i ^ 1]])) return false;
+        } else {
+          if (isL(board[l[i]]) && isL(board[l[3 - i]])) return false;
+        }
+      }
+    }
+    return true;
   }
 };
 State cur;
@@ -451,7 +475,7 @@ class CrystalLighting {
       memcpy(cur.board, BOARD, sizeof(BOARD));
     }
     State tmp, bst;
-    {
+    if (true) {
       cur.init();
       while (true) {
         remain = 1.0 - timer.getElapsed() / TIME_LIMIT;
@@ -466,6 +490,45 @@ class CrystalLighting {
         }
         if (bst.score1 < tmp.score1) {
           memcpy(&bst, &tmp, sizeof(tmp));
+        }
+      }
+    } else {
+      int pl[M], ps = 0;
+      for (int i = 0; i < H; ++i) {
+        for (int j = 0; j < W; ++j) {
+          int p = to(i, j);
+          if (BOARD[p] == 0) pl[ps++] = p;
+        }
+      }
+      cur.calcLight();
+      cur.calcScore();
+      while (true) {
+        remain = 1.0 - timer.getElapsed() / TIME_LIMIT;
+        if (remain < 0) break;
+        for (int Z = 0; Z < 100; ++Z) {
+          int p = pl[get_random() % ps], t = cur.board[p], u = -1;
+          if (t != 0 && cur.isValid(p, 0) && get_random() % 100 < 1) {
+            cur.putItem(p, 0);
+            continue;
+          }
+          double ps = cur.score(), s = -1e10;
+          constexpr int X[] = {0, 9, 10, 12, 16, 17, 18};
+          for (int tt : X) {
+            if (cur.isValid(p, tt)) {
+              cur.putItem(p, tt);
+              double ts = cur.score();
+              if (s < ts) {
+                s = ts;
+                u = tt;
+              }
+            }
+          }
+          if (s - ps > remain * log(get_random_double())) {
+            cur.putItem(p, u);
+            if (bst.score1 < cur.score1) memcpy(&bst, &cur, sizeof(cur));
+          } else {
+            cur.putItem(p, t);
+          }
         }
       }
     }
