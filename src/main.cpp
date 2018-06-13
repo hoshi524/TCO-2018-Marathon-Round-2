@@ -73,7 +73,7 @@ constexpr int DIR[] = {1, N, -1, -N};
 constexpr double invalid = -1e10;
 int H, W;
 int CL, CM, CO, MM, MO;
-int BOARD[M];
+int8_t BOARD[M];
 double remain;
 
 inline int to(int x, int y) { return (x << 7) | y; }
@@ -94,14 +94,8 @@ int cost(int t) {
 
 struct State {
   int score1 = 0, score2 = 0, mirrors = 0, obstacles = 0;
-  int board[M];
-  int light[M][4];
-
-  void init() {
-    calcLight();
-    calcScore();
-    replace(to(0, 0), to(H, W));
-  }
+  int8_t board[M];
+  int16_t light[M][4];
 
   int bend(int p, int d) { return bend(p, d, board[p]); }
 
@@ -236,7 +230,7 @@ struct State {
         v2 -= calcScore2(ct, cb);
       }
       {
-        static int tmp[4];
+        static int16_t tmp[4];
         memcpy(tmp, light[cp], sizeof(tmp));
         for (int i = d; i < 4; ++i) {
           if (cp == light[p][i]) {
@@ -312,7 +306,7 @@ struct State {
         }
       }
     }
-    static int edge[M * 4];
+    static int edge[M];
     static int pl[M];
     int es = 0, ps = 0;
     for (int i = h1; i <= h2; ++i) {
@@ -326,7 +320,6 @@ struct State {
         }
       }
     }
-    assert(es < M * 4);
     while (es > 0) {
       double _score = invalid;
       int p = 0, t = 0;
@@ -388,7 +381,7 @@ struct State {
         if (false) {
           int p1 = score1;
           int p2 = score2;
-          static int tmp[M][4];
+          static int16_t tmp[M][4];
           memcpy(tmp, light, sizeof(tmp));
           calcLight();
           calcScore();
@@ -407,7 +400,7 @@ struct State {
 
   bool isValid(int p, int t) {
     // if (BOARD[p] != 0) return false;
-    int* l = light[p];
+    int16_t* l = light[p];
     if (t == 0) {
       for (int i = 0; i < 2; ++i) {
         if (isL(board[l[i]]) && isL(board[l[i + 2]])) return false;
@@ -433,7 +426,6 @@ struct State {
     return true;
   }
 };
-State cur;
 
 class CrystalLighting {
  public:
@@ -462,24 +454,26 @@ class CrystalLighting {
           }
         }
       }
-      memcpy(cur.board, BOARD, sizeof(BOARD));
     }
-    State tmp, bst;
+    State tmp, bst, cur;
     {
-      cur.init();
+      memcpy(cur.board, BOARD, sizeof(BOARD));
+      cur.calcLight();
+      memcpy(&tmp, &cur, sizeof(State));
       while (true) {
         remain = 1.0 - timer.getElapsed() / TIME_LIMIT;
         if (remain < 0) break;
-        memcpy(&tmp, &cur, sizeof(cur));
         constexpr int MASK = 6;
         int h = get_random() % (H - MASK);
         int w = get_random() % (W - MASK);
         tmp.replace(to(h, w), to(h + MASK, w + MASK));
-        if (tmp.score() - cur.score() > 5 * remain * log(get_random_double())) {
-          memcpy(&cur, &tmp, sizeof(tmp));
-        }
         if (bst.score1 < tmp.score1) {
-          memcpy(&bst, &tmp, sizeof(tmp));
+          memcpy(&bst, &tmp, sizeof(State));
+        }
+        if (tmp.score() - cur.score() > 5 * remain * log(get_random_double())) {
+          memcpy(&cur, &tmp, sizeof(State));
+        } else {
+          memcpy(&tmp, &cur, sizeof(State));
         }
       }
     }
