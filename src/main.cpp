@@ -329,43 +329,36 @@ struct State {
           int i = get_random() % z;
           p = pl[i];
           t = board[p];
-          if (isL(t)) break;
+          if (t > 0) break;
           swap(pl[i], pl[--z]);
         }
-        if (!isL(t)) continue;
+        if (t == 0) continue;
+        if (!isValid(p, 0)) continue;
         _score = score();
         putItem(p, 0);
         z = p;
         for (int d = 0; d < 4; ++d) {
-          int pp = light[z][d];
-          if (pp == -1) continue;
-          int tt = board[pp];
-          if (!isC(tt)) continue;
-          if (tt != (tt | (t ^ 8))) continue;
-          auto calc = [&](int a, int b) {
-            while (true) {
-              a += DIR[b];
-              if (not in(a)) break;
-              if (a == z) break;
-              if (BOARD[a] == 0 && isValid(a, t)) {
-                double x = diffScore(a, t) + get_random_double();
-                if (_score < x) {
-                  _score = x;
-                  p = a;
-                }
-              }
-              if (board[a] == 0) continue;
-              if (board[a] == 17) {
-                b = 3 - b;
-              } else if (board[a] == 18) {
-                b = b ^ 1;
-              } else {
-                break;
+          int a = p, b = d;
+          while (true) {
+            a += DIR[b];
+            if (not in(a)) break;
+            if (a == z) break;
+            if (BOARD[a] == 0 && isValid(a, t)) {
+              double x = diffScore(a, t) + get_random_double();
+              if (_score < x) {
+                _score = x;
+                p = a;
               }
             }
-          };
-          calc(z, d);
-          calc(z, rev(d));
+            if (board[a] == 0) continue;
+            if (board[a] == 17) {
+              b = 3 - b;
+            } else if (board[a] == 18) {
+              b = b ^ 1;
+            } else {
+              break;
+            }
+          }
         }
       } else {
         int i = get_random() % es;
