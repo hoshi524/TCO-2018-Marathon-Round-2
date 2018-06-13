@@ -363,11 +363,13 @@ struct State {
       }
     }
     static int edge[M * 4];
-    int es = 0;
+    static int pl[M];
+    int es = 0, ps = 0;
     for (int i = h1; i <= h2; ++i) {
       for (int j = w1; j <= w2; ++j) {
         int p = to(i, j);
         if (BOARD[p] != 0) continue;
+        pl[ps++] = p;
         edge[es++] = (p << 8);
         for (int k = 1; k < 8; k <<= 1) {
           int t = 8 | k;
@@ -392,6 +394,50 @@ struct State {
               }
             }
           }
+        }
+      } else if (get_random() % 30 == 0) {
+        int z = ps;
+        while (z > 0) {
+          int i = get_random() % z;
+          p = pl[i];
+          t = board[p];
+          if (isL(t)) break;
+          swap(pl[i], pl[--z]);
+        }
+        if (!isL(t)) continue;
+        _score = score();
+        putItem(p, 0);
+        z = p;
+        for (int d = 0; d < 4; ++d) {
+          int pp = light[z][d];
+          if (pp == -1) continue;
+          int tt = board[pp];
+          if (!isC(tt)) continue;
+          if (tt != (tt | (t ^ 8))) continue;
+          auto calc = [&](int a, int b) {
+            while (true) {
+              a += DIR[b];
+              if (not in(a)) break;
+              if (a == z) break;
+              if (board[a] == 0) {
+                double x = diffScore(a, t) + get_random_double();
+                if (_score < x) {
+                  _score = x;
+                  p = a;
+                }
+                continue;
+              }
+              if (board[a] == 17) {
+                b = 3 - b;
+              } else if (board[a] == 18) {
+                b = b ^ 1;
+              } else {
+                break;
+              }
+            }
+          };
+          calc(z, d);
+          calc(z, (d + 2) % 4);
         }
       } else {
         int i = get_random() % es;
@@ -475,7 +521,7 @@ class CrystalLighting {
       memcpy(cur.board, BOARD, sizeof(BOARD));
     }
     State tmp, bst;
-    if (true) {
+    {
       cur.init();
       while (true) {
         remain = 1.0 - timer.getElapsed() / TIME_LIMIT;
@@ -490,45 +536,6 @@ class CrystalLighting {
         }
         if (bst.score1 < tmp.score1) {
           memcpy(&bst, &tmp, sizeof(tmp));
-        }
-      }
-    } else {
-      int pl[M], ps = 0;
-      for (int i = 0; i < H; ++i) {
-        for (int j = 0; j < W; ++j) {
-          int p = to(i, j);
-          if (BOARD[p] == 0) pl[ps++] = p;
-        }
-      }
-      cur.calcLight();
-      cur.calcScore();
-      while (true) {
-        remain = 1.0 - timer.getElapsed() / TIME_LIMIT;
-        if (remain < 0) break;
-        for (int Z = 0; Z < 100; ++Z) {
-          int p = pl[get_random() % ps], t = cur.board[p], u = -1;
-          if (t != 0 && cur.isValid(p, 0) && get_random() % 100 < 1) {
-            cur.putItem(p, 0);
-            continue;
-          }
-          double ps = cur.score(), s = -1e10;
-          constexpr int X[] = {0, 9, 10, 12, 16, 17, 18};
-          for (int tt : X) {
-            if (cur.isValid(p, tt)) {
-              cur.putItem(p, tt);
-              double ts = cur.score();
-              if (s < ts) {
-                s = ts;
-                u = tt;
-              }
-            }
-          }
-          if (s - ps > remain * log(get_random_double())) {
-            cur.putItem(p, u);
-            if (bst.score1 < cur.score1) memcpy(&bst, &cur, sizeof(cur));
-          } else {
-            cur.putItem(p, t);
-          }
         }
       }
     }
