@@ -120,16 +120,16 @@ struct State {
   void calcLight(int p) {
     for (int d = 0; d < 4; ++d) {
       int a = p, b = d, l = bend(p, d);
-      if (p == l && (board[p] == 0 || isM(board[p]))) continue;
       while (true) {
         a += DIR[b];
         if (not in(a)) break;
         light[a][(b + 2) % 4] = l;
-        if (p == a) break;
         if (board[a] == 0) continue;
         if (board[a] == 17) {
+          if (p == a) break;
           b = 3 - b;
         } else if (board[a] == 18) {
+          if (p == a) break;
           b = b ^ 1;
         } else {
           break;
