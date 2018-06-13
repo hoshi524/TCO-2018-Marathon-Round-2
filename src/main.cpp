@@ -455,7 +455,9 @@ class CrystalLighting {
         }
       }
     }
-    State tmp, bst, cur;
+    int score = 0;
+    int8_t best[M];
+    State tmp, cur;
     {
       memcpy(cur.board, BOARD, sizeof(BOARD));
       cur.calcLight();
@@ -467,8 +469,9 @@ class CrystalLighting {
         int h = get_random() % (H - MASK);
         int w = get_random() % (W - MASK);
         tmp.replace(to(h, w), to(h + MASK, w + MASK));
-        if (bst.score1 < tmp.score1) {
-          memcpy(&bst, &tmp, sizeof(State));
+        if (score < tmp.score1) {
+          score = tmp.score1;
+          memcpy(best, tmp.board, sizeof(BOARD));
         }
         if (tmp.score() - cur.score() > 5 * remain * log(get_random_double())) {
           memcpy(&cur, &tmp, sizeof(State));
@@ -482,7 +485,7 @@ class CrystalLighting {
       for (int i = 0; i < H; ++i) {
         for (int j = 0; j < W; ++j) {
           int k = to(i, j);
-          int x = bst.board[k];
+          int x = best[k];
           if (x == BOARD[k]) continue;
           char c = '-';
           if (x < 16) {
