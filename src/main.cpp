@@ -328,33 +328,17 @@ struct State {
         int p = to(i, j);
         if (BOARD[p] != 0) continue;
         pl[ps++] = p;
-        edge[es++] = (p << 8);
-        for (int k = 1; k < 8; k <<= 1) {
-          int t = 8 | k;
+        constexpr int X[] = {0, 9, 10, 12, 16, 17, 18};
+        for (int t : X) {
           edge[es++] = (p << 8) | t;
         }
       }
     }
+    assert(es < M * 4);
     while (es > 0) {
       double _score = invalid;
       int p = 0, t = 0;
-      if ((obstacles < MO || mirrors < MM) && get_random() % 200 == 0) {
-        for (int i = h1; i <= h2; ++i) {
-          for (int j = w1; j <= w2; ++j) {
-            int tp = to(i, j);
-            if (BOARD[tp] != 0) continue;
-            for (int tt = 16; tt < 19; ++tt) {
-              if (!isValid(tp, tt)) continue;
-              double x = diffScore(tp, tt) + get_random_double();
-              if (_score < x) {
-                _score = x;
-                p = tp;
-                t = tt;
-              }
-            }
-          }
-        }
-      } else if (get_random() % 30 == 0) {
+      if (get_random() % 20 == 0) {
         int z = ps;
         while (z > 0) {
           int i = get_random() % z;
@@ -396,7 +380,7 @@ struct State {
             }
           };
           calc(z, d);
-          calc(z, (d + 2) % 4);
+          calc(z, rev(d));
         }
       } else {
         int i = get_random() % es;
