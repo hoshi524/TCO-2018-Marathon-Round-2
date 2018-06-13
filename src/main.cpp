@@ -385,19 +385,23 @@ struct State {
       if (_score - score() > remain * log(get_random_double())) {
         putItem(p, t);
         // assert(_score == score());
+        if (false) {
+          int p1 = score1;
+          int p2 = score2;
+          static int tmp[M][4];
+          memcpy(tmp, light, sizeof(tmp));
+          calcLight();
+          calcScore();
+          if (p1 != score1)
+            cerr << p1 << " " << score1 << " " << p << " " << t << endl;
+          if (p2 != score2)
+            cerr << p2 << " " << score2 << " " << p << " " << t << endl;
+          for (int i = 0; i < M; ++i)
+            for (int j = 0; j < 4; ++j) assert(tmp[i][j] == light[i][j]);
+          assert(p1 == score1);
+          assert(p2 == score2);
+        }
       }
-    }
-    if (false) {
-      int p1 = score1;
-      int p2 = score2;
-      static int tmp[M][4];
-      memcpy(tmp, light, sizeof(tmp));
-      calcLight();
-      calcScore();
-      assert(p1 == score1);
-      assert(p2 == score2);
-      for (int i = 0; i < M; ++i)
-        for (int j = 0; j < 4; ++j) assert(tmp[i][j] == light[i][j]);
     }
   }
 
@@ -417,6 +421,8 @@ struct State {
     } else if (isM(t)) {
       if (mirrors == MM) return false;
       for (int i = 0; i < 4; i += 2) {
+        if (l[i] == l[i ^ 1]) return false;
+        if (l[i] == l[3 - i]) return false;
         if (t == 17) {
           if (isL(board[l[i]]) && isL(board[l[i ^ 1]])) return false;
         } else {
