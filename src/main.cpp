@@ -120,6 +120,7 @@ struct State {
   void calcLight(int p) {
     for (int d = 0; d < 4; ++d) {
       int a = p, b = d, l = bend(p, d);
+      if (p == l && (board[p] == 0 || isM(board[p]))) continue;
       while (true) {
         a += DIR[b];
         if (not in(a)) break;
@@ -234,24 +235,19 @@ struct State {
         v1 -= calcScore1(ct, cb);
         v2 -= calcScore2(ct, cb);
       }
-      static int dl[4];
-      int ds = 0;
-      for (int i = d; i < 4; ++i) {
-        if (cp == light[p][i]) {
-          dl[ds++] = i;
-          used[i] = true;
-        }
-      }
       {
         static int tmp[4];
         memcpy(tmp, light[cp], sizeof(tmp));
-        for (int i = 0; i < ds; ++i) {
-          int pp = bend(p, dl[i], pt);
-          int np = bend(p, dl[i], t);
-          for (int j = 0; j < 4; ++j) {
-            if (light[cp][j] == pp) {
-              light[cp][j] = np;
-              break;
+        for (int i = d; i < 4; ++i) {
+          if (cp == light[p][i]) {
+            used[i] = true;
+            int pp = bend(p, i, pt);
+            int np = bend(p, i, t);
+            for (int j = 0; j < 4; ++j) {
+              if (light[cp][j] == pp) {
+                light[cp][j] = np;
+                break;
+              }
             }
           }
         }
