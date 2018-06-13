@@ -176,29 +176,25 @@ struct State {
   }
 
   void putItem(int p, int t) {
-    static bool ok[4];
-    for (int i = 0; i < 4; ++i) {
-      ok[i] = [&]() {
-        int a = light[p][i];
-        if (a == -1) return false;
-        int t = board[a];
-        if (!isC(t)) return false;
-        for (int j = 0; j < i; ++j)
-          if (light[p][i] == light[p][j]) return false;
-        return true;
-      }();
-    }
     auto calc = [&](bool add) {
       for (int i = 0; i < 4; ++i) {
-        if (ok[i]) {
-          int a = light[p][i];
+        int a = light[p][i];
+        if (a == -1) continue;
+        int t = board[a];
+        if (!isC(t)) continue;
+        if ([&]() {
+              for (int j = 0; j < i; ++j) {
+                if (a == light[p][j]) return false;
+              }
+              return true;
+            }()) {
           int b = lightBit(a);
           if (add) {
-            score1 += calcScore1(board[a], b);
-            score2 += calcScore2(board[a], b);
+            score1 += calcScore1(t, b);
+            score2 += calcScore2(t, b);
           } else {
-            score1 -= calcScore1(board[a], b);
-            score2 -= calcScore2(board[a], b);
+            score1 -= calcScore1(t, b);
+            score2 -= calcScore2(t, b);
           }
         }
       }
