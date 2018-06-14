@@ -66,7 +66,7 @@ inline double get_random_double() { return (double)get_random() / UINT32_MAX; }
 17~18 = mirror
 */
 
-constexpr double TIME_LIMIT = 0.8;
+constexpr double TIME_LIMIT = 9.8;
 constexpr int N = 1 << 7;
 constexpr int M = N * 100;
 constexpr int DIR[] = {1, N, -1, -N};
@@ -115,7 +115,7 @@ struct State {
 
   void calcLight(int p) {
     for (int d = 0; d < 4; ++d) {
-      int a = p, b = d, l = bend(p, d);
+      int a = p, b = d, c = 0, l = bend(p, d);
       while (true) {
         a += DIR[b];
         if (not in(a)) break;
@@ -128,6 +128,7 @@ struct State {
           if (p == a) break;
           b = b ^ 1;
         } else {
+          if (p == a && c++ > 0) break;
           break;
         }
       }
@@ -370,7 +371,7 @@ struct State {
           }
         }
       }
-      if (_score >= score()) {
+      if (_score - score() > 5 * remain * log(get_random_double())) {
         putItem(p, t);
       }
     }
