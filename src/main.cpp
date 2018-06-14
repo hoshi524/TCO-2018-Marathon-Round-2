@@ -97,7 +97,7 @@ struct State {
   int8_t board[M];
   int16_t light[M][4];
 
-  int bend(int p, int d) { return bend(p, d, board[p]); }
+  inline int bend(int p, int d) { return bend(p, d, board[p]); }
 
   int bend(int p, int d, int t) {
     if (t == 0) {
@@ -142,12 +142,12 @@ struct State {
     }
   }
 
-  int lightBit(int p) {
+  inline int lightBit(int p) { return lightBit(light[p]); }
+
+  int lightBit(int16_t* light) {
     int bit = 0;
     for (int k = 0; k < 4; ++k) {
-      int n = light[p][k];
-      if (n == -1) continue;
-      int t = board[n];
+      int t = board[light[k]];
       if (isL(t)) bit |= t ^ 8;
     }
     return bit;
@@ -216,7 +216,7 @@ struct State {
     if (t == pt) return invalid;
     int v1 = cost(pt) - cost(t);
     int v2 = cost(pt) - cost(t);
-    static bool used[4];
+    bool used[4];
     memset(used, false, sizeof(used));
     for (int d = 0; d < 4; ++d) {
       if (used[d]) continue;
@@ -230,25 +230,25 @@ struct State {
         v2 -= calcScore2(ct, cb);
       }
       {
-        static int16_t tmp[4];
-        memcpy(tmp, light[cp], sizeof(tmp));
+        int16_t l[4];
+        memcpy(l, light[cp], sizeof(l));
         for (int i = d; i < 4; ++i) {
           if (cp == light[p][i]) {
             used[i] = true;
             int pp = bend(p, i, pt);
             int np = bend(p, i, t);
+            if (pp == np) continue;
             for (int j = 0; j < 4; ++j) {
-              if (light[cp][j] == pp) {
-                light[cp][j] = np;
+              if (l[j] == pp) {
+                l[j] = np;
                 break;
               }
             }
           }
         }
         board[p] = t;
-        int nb = lightBit(cp);
+        int nb = lightBit(l);
         board[p] = pt;
-        memcpy(light[cp], tmp, sizeof(tmp));
         v1 += calcScore1(ct, nb);
         v2 += calcScore2(ct, nb);
       }
