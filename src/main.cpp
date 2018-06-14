@@ -84,7 +84,7 @@ inline bool isC(int t) { return 0 < t && t < 8; }
 inline bool isL(int t) { return 8 < t && t < 16; }
 inline bool isO(int t) { return t == 16; }
 inline bool isM(int t) { return 16 < t && t < 19; }
-inline int rev(int d) { return (d + 2) % 4; }
+inline int rev(int d) { return (d + 2) & 3; }
 int cost(int t) {
   if (isL(t)) return CL;
   if (isO(t)) return CO;
@@ -117,7 +117,7 @@ struct State {
       while (true) {
         a += DIR[b];
         if (not in(a)) break;
-        light[a][(b + 2) % 4] = l;
+        light[a][rev(b)] = l;
         if (board[a] == 0) continue;
         if (board[a] == 17) {
           if (p == a) break;
@@ -323,7 +323,14 @@ struct State {
     while (es > 0) {
       double _score = -1e10;
       int p = 0, t = 0;
-      if (get_random() % 20 == 0) {
+      if (get_random() % 20) {
+        int i = get_random() % es;
+        p = edge[i] >> 8;
+        t = edge[i] & 0xff;
+        edge[i] = edge[--es];
+        if (!isValid(p, t)) continue;
+        _score = diffScore(p, t);
+      } else {
         int z = ps;
         while (z > 0) {
           int i = get_random() % z;
@@ -360,13 +367,6 @@ struct State {
             }
           }
         }
-      } else {
-        int i = get_random() % es;
-        p = edge[i] >> 8;
-        t = edge[i] & 0xff;
-        edge[i] = edge[--es];
-        if (!isValid(p, t)) continue;
-        _score = diffScore(p, t);
       }
       if (_score - score() > remain * log(get_random_double())) {
         putItem(p, t);
