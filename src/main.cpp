@@ -82,7 +82,7 @@ inline void to(int p, int& x, int& y) { x = p >> 7, y = p & (N - 1); }
 inline bool in(int p) { return p > -1 && p < N * H && (p & (N - 1)) < W; }
 inline int bitcount(int b) { return bitset<3>(b).count(); }
 inline int crystalScore(int c) { return bitcount(c) == 1 ? 20 : 30; }
-inline bool isC(int t) { return 0 < t && t < 8; }
+inline bool isC(int t) { return 0 < t && t < 9; }
 inline bool isL(int t) { return 8 < t && t < 16; }
 inline bool isO(int t) { return t == 16; }
 inline bool isM(int t) { return 16 < t && t < 19; }
@@ -473,7 +473,10 @@ class CrystalLighting {
           for (int k = 0; k < 4; ++k) {
             if (!isX(p + DIR[k])) ++c;
           }
-          if (c < bitcount(t)) continue;
+          if (c < bitcount(t)) {
+            BOARD[p] = 8;
+            continue;
+          }
           queue[0] = p;
           int qi = 0, qs = 1;
           while (qi < qs) {
