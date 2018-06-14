@@ -68,9 +68,9 @@ inline double get_random_double() { return (double)get_random() / UINT32_MAX; }
 
 constexpr double TIME_LIMIT = 1.8;
 constexpr int N = 1 << 7;
-constexpr int M = N * N;
+constexpr int M = N * 100;
 constexpr int DIR[] = {1, N, -1, -N};
-constexpr double invalid = -1e10;
+constexpr int MASK = 7;
 int H, W;
 int CL, CM, CO, MM, MO;
 int8_t BOARD[M];
@@ -213,7 +213,6 @@ struct State {
 
   double diffScore(int p, int t) {
     int pt = board[p];
-    if (t == pt) return invalid;
     int v1 = cost(pt) - cost(t);
     int v2 = cost(pt) - cost(t);
     bool used[4];
@@ -280,10 +279,11 @@ struct State {
     }
   }
 
-  void replace(int p1, int p2) {
+  void replace(int p1) {
     int h1, w1, h2, w2;
     to(p1, h1, w1);
-    to(p2, h2, w2);
+    h2 = h1 + MASK;
+    w2 = w1 + MASK;
     {  // remove
       double rexp = 0.5 + remain * 0.5;
       for (int i = h1; i < h2; ++i) {
@@ -306,11 +306,11 @@ struct State {
         }
       }
     }
-    static int edge[M];
-    static int pl[M];
+    static int edge[MASK * MASK * 7];
+    static int pl[MASK * MASK];
     int es = 0, ps = 0;
-    for (int i = h1; i <= h2; ++i) {
-      for (int j = w1; j <= w2; ++j) {
+    for (int i = h1; i < h2; ++i) {
+      for (int j = w1; j < w2; ++j) {
         int p = to(i, j);
         if (BOARD[p] != 0) continue;
         pl[ps++] = p;
@@ -321,7 +321,7 @@ struct State {
       }
     }
     while (es > 0) {
-      double _score = invalid;
+      double _score = -1e10;
       int p = 0, t = 0;
       if (get_random() % 20 == 0) {
         int z = ps;
@@ -343,7 +343,7 @@ struct State {
             a += DIR[b];
             if (not in(a)) break;
             if (a == z) break;
-            if (BOARD[a] == 0 && isValid(a, t)) {
+            if (isValid(a, t)) {
               double x = diffScore(a, t) + get_random_double();
               if (_score < x) {
                 _score = x;
@@ -392,7 +392,8 @@ struct State {
   }
 
   bool isValid(int p, int t) {
-    // if (BOARD[p] != 0) return false;
+    if (BOARD[p] != 0) return false;
+    if (board[p] == t) return false;
     int16_t* l = light[p];
     if (t == 0) {
       for (int i = 0; i < 2; ++i) {
@@ -458,10 +459,9 @@ class CrystalLighting {
       while (true) {
         remain = 1.0 - timer.getElapsed() / TIME_LIMIT;
         if (remain < 0) break;
-        constexpr int MASK = 6;
-        int h = get_random() % (H - MASK);
-        int w = get_random() % (W - MASK);
-        tmp.replace(to(h, w), to(h + MASK, w + MASK));
+        int h = get_random() % (H + 1 - MASK);
+        int w = get_random() % (W + 1 - MASK);
+        tmp.replace(to(h, w));
         if (score < tmp.score1) {
           score = tmp.score1;
           memcpy(best, tmp.board, sizeof(BOARD));
