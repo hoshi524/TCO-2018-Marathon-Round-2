@@ -287,7 +287,7 @@ struct State {
     h2 = h1 + MASK;
     w2 = w1 + MASK;
     {  // remove
-      double rexp = 0.5 + remain * 0.5;
+      double rexp = 0.2 + remain * 0.8;
       for (int i = h1; i < h2; ++i) {
         for (int j = w1; j < w2; ++j) {
           int p = to(i, j);
