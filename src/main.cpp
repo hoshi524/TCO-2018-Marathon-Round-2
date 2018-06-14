@@ -66,7 +66,7 @@ inline double get_random_double() { return (double)get_random() / UINT32_MAX; }
 17~18 = mirror
 */
 
-constexpr double TIME_LIMIT = 1.8;
+constexpr double TIME_LIMIT = 0.8;
 constexpr int N = 1 << 7;
 constexpr int M = N * 100;
 constexpr int DIR[] = {1, N, -1, -N};
@@ -74,6 +74,7 @@ constexpr int MASK = 7;
 int H, W;
 int CL, CM, CO, MM, MO;
 int8_t BOARD[M];
+bool valid[M][7];
 double remain;
 
 inline int to(int x, int y) { return (x << 7) | y; }
@@ -315,8 +316,8 @@ struct State {
         if (BOARD[p] != 0) continue;
         pl[ps++] = p;
         constexpr int X[] = {0, 9, 10, 12, 16, 17, 18};
-        for (int t : X) {
-          edge[es++] = (p << 8) | t;
+        for (int k = 0; k < 7; ++k) {
+          if (valid[p][k]) edge[es++] = (p << 8) | X[k];
         }
       }
     }
@@ -445,6 +446,71 @@ class CrystalLighting {
             BOARD[k] = 16;
           } else {
             BOARD[k] = c - '0';
+          }
+        }
+      }
+    }
+    {
+      /*
+      0   = none
+      1~3 = lantern
+      4   = obstacle
+      5~6 = mirror
+      */
+      memset(valid, true, sizeof(valid));
+      int bit[M];
+      int queue[M];
+      memset(bit, 0, sizeof(bit));
+      auto isW = [&](int p) { return !in(p) || isO(BOARD[p]); };
+      auto isX = [&](int p) { return !in(p) || BOARD[p] > 0; };
+      for (int i = 0; i < H; ++i) {
+        for (int j = 0; j < W; ++j) {
+          int p = to(i, j);
+          int t = BOARD[p];
+          if (!isC(t)) continue;
+          queue[0] = p;
+          int qi = 0, qs = 1;
+          while (qi < qs) {
+            int q = queue[qi++];
+            for (int k = 0; k < 4; ++k) {
+              int n = q + DIR[k];
+              if (isX(n)) continue;
+              if (t == (bit[n] & t)) continue;
+              bit[n] |= t;
+              queue[qs++] = n;
+            }
+          }
+        }
+      }
+      for (int i = 0; i < H; ++i) {
+        for (int j = 0; j < W; ++j) {
+          int p = to(i, j);
+          if (BOARD[p] != 0) continue;
+          for (int k = 0; k < 3; ++k) {
+            if (bit[p] & (1 << k)) continue;
+            valid[p][k + 1] = false;
+          }
+          if (isX(p + DIR[0]) && isX(p + DIR[1]) && isX(p + DIR[2]) &&
+              isX(p + DIR[3])) {
+            valid[p][4] = false;
+            valid[p][5] = false;
+            valid[p][6] = false;
+          }
+          for (int k = 0; k < 4; ++k) {
+            int p1 = p + DIR[k];
+            int p2 = p + DIR[(k + 1) & 3];
+            int p3 = p + DIR[(k + 3) & 3];
+            if (isW(p1) && isW(p2)) {
+              valid[p][4] = false;
+              if (k & 1) {
+                valid[p][5] = false;
+              } else {
+                valid[p][6] = false;
+              }
+            }
+            if (isW(p1) && isX(p2) && isX(p3)) {
+              valid[p][4] = false;
+            }
           }
         }
       }
