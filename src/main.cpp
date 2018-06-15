@@ -120,15 +120,13 @@ struct State {
         a += DIR[b];
         if (not in(a)) break;
         light[a][rev(b)] = l;
+        if (p == a && c++ > 0) break;
         if (board[a] == 0) continue;
         if (board[a] == 17) {
-          if (p == a) break;
           b = 3 - b;
         } else if (board[a] == 18) {
-          if (p == a) break;
           b = b ^ 1;
         } else {
-          if (p == a && c++ > 0) break;
           break;
         }
       }
@@ -348,11 +346,11 @@ struct State {
         putItem(p, 0);
         z = p;
         for (int d = 0; d < 4; ++d) {
-          int a = p, b = d;
+          int a = p, b = d, c = 0;
           while (true) {
             a += DIR[b];
             if (not in(a)) break;
-            if (a == z) break;
+            if (z == a && c++ > 0) break;
             if (isValid(a, t)) {
               double x = diffScore(a, t) + get_random_double();
               if (_score < x) {
