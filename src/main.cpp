@@ -115,12 +115,11 @@ struct State {
 
   void calcLight(int p) {
     for (int d = 0; d < 4; ++d) {
-      int a = p, b = d, c = 0, l = bend(p, d);
-      while (true) {
+      int a = p, b = d, l = bend(p, d);
+      for (int k = 0; k < 100; ++k) {
         a += DIR[b];
         if (not in(a)) break;
         light[a][rev(b)] = l;
-        if (p == a && c++ > 0) break;
         if (board[a] == 0) continue;
         if (board[a] == 17) {
           b = 3 - b;
@@ -346,11 +345,10 @@ struct State {
         putItem(p, 0);
         z = p;
         for (int d = 0; d < 4; ++d) {
-          int a = p, b = d, c = 0;
-          while (true) {
+          int a = p, b = d;
+          for (int k = 0; k < 100; ++k) {
             a += DIR[b];
             if (not in(a)) break;
-            if (z == a && c++ > 0) break;
             if (isValid(a, t)) {
               double x = diffScore(a, t) + get_random_double();
               if (_score < x) {
